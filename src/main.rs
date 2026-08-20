@@ -120,12 +120,15 @@ fn main() {
         fetch_contributions(username, &token)
     };
 
-    // Generate desktop version (53 weeks, 13px cells)
+    // Generate desktop version (53 weeks, 13px cells) — full year
     let desktop_svg = generate_svg(&days, &SvgConfig::desktop());
     fs::write("activity-graph.svg", &desktop_svg).expect("Failed to write activity-graph.svg");
 
-    // Generate mobile version (18 weeks, 15px cells)
-    let mobile_svg = generate_svg(&days, &SvgConfig::mobile());
+    // Generate mobile version (18 weeks, 15px cells) — most recent weeks only
+    let mobile_cfg = SvgConfig::mobile();
+    let mobile_weeks = mobile_cfg.num_weeks * 7;
+    let mobile_days = &days[days.len().saturating_sub(mobile_weeks)..];
+    let mobile_svg = generate_svg(mobile_days, &mobile_cfg);
     fs::write("activity-graph-mobile.svg", &mobile_svg)
         .expect("Failed to write activity-graph-mobile.svg");
 
