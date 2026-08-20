@@ -49,6 +49,56 @@ struct GraphError {
     message: String,
 }
 
+// --- SVG Configuration ---
+
+struct SvgConfig {
+    num_weeks: usize,
+    cell_size: i32,
+    cell_gap: i32,
+    label_width: i32,
+    header_height: i32,
+    right_padding: i32,
+    bottom_padding: i32,
+}
+
+impl SvgConfig {
+    fn desktop() -> Self {
+        Self {
+            num_weeks: 53,
+            cell_size: 13,
+            cell_gap: 2,
+            label_width: 30,
+            header_height: 20,
+            right_padding: 20,
+            bottom_padding: 10,
+        }
+    }
+
+    fn mobile() -> Self {
+        Self {
+            num_weeks: 18,
+            cell_size: 15,
+            cell_gap: 3,
+            label_width: 35,
+            header_height: 22,
+            right_padding: 15,
+            bottom_padding: 10,
+        }
+    }
+
+    fn cell_total(&self) -> i32 {
+        self.cell_size + self.cell_gap
+    }
+
+    fn svg_width(&self) -> i32 {
+        self.label_width + (self.num_weeks as i32) * self.cell_total() + self.right_padding
+    }
+
+    fn svg_height(&self) -> i32 {
+        self.header_height + 7 * self.cell_total() + self.bottom_padding
+    }
+}
+
 // --- Main ---
 
 fn main() {
@@ -56,23 +106,27 @@ fn main() {
     let test_mode = args.iter().any(|a| a == "--test");
 
     let days = if test_mode {
-        println!("🧪 Running in test mode with mock data...");
+        println!("Running in test mode with mock data...");
         generate_mock_days()
     } else {
-        let username = args.get(1).expect("Usage: activity-graph [--test] <github-username>");
-        let token = env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN environment variable is required");
+        let username = args
+            .get(1)
+            .expect("Usage: activity-graph [--test] <github-username>");
+        let token =
+            env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN environment variable is required");
         fetch_contributions(username, &token)
     };
 
-    let username = if test_mode {
-        "test-user".to_string()
-    } else {
-        args.get(1).unwrap_or(&"unknown".to_string()).clone()
-    };
+    // Generate desktop version (53 weeks, 13px cells)
+    let desktop_svg = generate_svg(&days, &SvgConfig::desktop());
+    fs::write("activity-graph.svg", &desktop_svg).expect("Failed to write activity-graph.svg");
 
-    let svg = generate_svg(&username, &days);
-    fs::write("activity-graph.svg", &svg).expect("Failed to write SVG file");
-    println!("✅ activity-graph.svg generated successfully!");
+    // Generate mobile version (18 weeks, 15px cells)
+    let mobile_svg = generate_svg(&days, &SvgConfig::mobile());
+    fs::write("activity-graph-mobile.svg", &mobile_svg)
+        .expect("Failed to write activity-graph-mobile.svg");
+
+    println!("Generated activity-graph.svg (desktop) and activity-graph-mobile.svg (mobile)");
 }
 
 fn fetch_contributions(username: &str, token: &str) -> Vec<ContributionDay> {
@@ -128,7 +182,6 @@ fn generate_mock_days() -> Vec<ContributionDay> {
     use rand::Rng;
     let mut rng = rand::thread_rng();
     let mut days = Vec::new();
-    // Go back ~53 weeks from today
     let today = chrono::Utc::now().date_naive();
     let start = today - chrono::Duration::days(364);
     let mut current = start;
@@ -143,45 +196,19 @@ fn generate_mock_days() -> Vec<ContributionDay> {
     days
 }
 
-fn generate_svg(username: &str, days: &[ContributionDay]) -> String {
-    // Build a map of date -> count
-    let mut date_map = std::collections::HashMap::new();
-    for day in days {
-        date_map.insert(day.date.as_str(), day.contribution_count);
-    }
+fn generate_svg(days: &[ContributionDay], cfg: &SvgConfig) -> String {
+    let cell_total = cfg.cell_total();
+    let svg_width = cfg.svg_width();
+    let svg_height = cfg.svg_height();
 
-    // We'll generate 53 weeks x 7 rows
-    // Each cell is 13x13 with 2px gap
-    let cell_size = 13;
-    let cell_gap = 2;
-    let cell_total = cell_size + cell_gap;
-    let label_width = 30;
-    let header_height = 20;
-    let right_padding = 20;
-    let bottom_padding = 10;
-
-    let num_weeks = 53;
-    let num_days = 7;
-
-    let svg_width = label_width + (num_weeks as i32) * cell_total + right_padding;
-    let svg_height = header_height + (num_days as i32) * cell_total + bottom_padding;
-
-    // Day labels (Mon, Wed, Fri)
-    let day_labels = [
-        (1, "Mon"),
-        (3, "Wed"),
-        (5, "Fri"),
-    ];
-
-    // Build the HTML cells
-    let mut cells_html = String::new();
+    let day_labels = [(1, "Mon"), (3, "Wed"), (5, "Fri")];
 
     // Month labels
     let mut month_positions: Vec<(String, usize)> = Vec::new();
     let mut last_month = "";
     for (week_idx, day_group) in days.chunks(7).enumerate() {
         if let Some(first_day) = day_group.first() {
-            let month = &first_day.date[5..7]; // MM from YYYY-MM-DD
+            let month = &first_day.date[5..7];
             if month != last_month {
                 last_month = month;
                 month_positions.push((month_name(month), week_idx));
@@ -189,53 +216,53 @@ fn generate_svg(username: &str, days: &[ContributionDay]) -> String {
         }
     }
 
-    // Month header labels
     let mut month_labels_html = String::new();
     for (month, week_idx) in &month_positions {
-        let x = label_width + (*week_idx as i32) * cell_total;
-        month_labels_html.push_str(&format!(
-            r#"<text x="{x}" y="12" class="month-label">{month}</text>"#
-        ));
+        if *week_idx < cfg.num_weeks {
+            let x = cfg.label_width + (*week_idx as i32) * cell_total;
+            month_labels_html.push_str(&format!(
+                r#"<text x="{x}" y="12" class="month-label">{month}</text>"#
+            ));
+        }
     }
 
     // Day labels
     let mut day_labels_html = String::new();
-    for (day_idx, label) in &day_labels {
-        let y = header_height + (day_idx * cell_total) + cell_size - 2;
+    for &(day_idx, label) in &day_labels {
+        let y = cfg.header_height + (day_idx as i32 * cell_total) + cfg.cell_size - 2;
         day_labels_html.push_str(&format!(
             r#"<text x="0" y="{y}" class="day-label">{label}</text>"#
         ));
     }
 
     // Contribution cells
-    let mut week_idx = 0;
-    let mut day_in_week = 0;
-
-    // Seed for deterministic pseudo-random delays
+    let mut cells_html = String::new();
+    let mut week_idx: usize = 0;
+    let mut day_in_week: usize = 0;
     let mut delay_seed: u32 = 42;
+
     for day in days {
+        if week_idx >= cfg.num_weeks {
+            break;
+        }
+
         let count = day.contribution_count;
         let level = get_level(count);
-        let x = label_width + (week_idx as i32) * cell_total;
-        let y = header_height + (day_in_week as i32) * cell_total;
+        let x = cfg.label_width + (week_idx as i32) * cell_total;
+        let y = cfg.header_height + (day_in_week as i32) * cell_total;
 
-        // Cascade delay: waves from left to right (staggered per week)
         let cascade_delay = week_idx as f64 * 0.04;
-
-        // Pseudo-random twinkle delay (deterministic based on position)
         delay_seed = delay_seed.wrapping_mul(1664525).wrapping_add(1013904223);
-        let twinkle_delay = ((delay_seed >> 16) % 6000) as f64 / 1000.0; // 0..6s
+        let twinkle_delay = ((delay_seed >> 16) % 6000) as f64 / 1000.0;
 
-        // Twinkle duration varies by level: more active contributions twinkle faster
         let twinkle_duration = match level {
-            0 => 0.0, // level-0 doesn't twinkle
-            1 => 4.0 + (delay_seed % 2000) as f64 / 1000.0, // 4-6s
-            2 => 3.0 + (delay_seed % 1500) as f64 / 1000.0, // 3-4.5s
-            3 => 2.5 + (delay_seed % 1000) as f64 / 1000.0, // 2.5-3.5s
-            _ => 2.0 + (delay_seed % 800) as f64 / 1000.0,  // 2-2.8s
+            0 => 0.0,
+            1 => 4.0 + (delay_seed % 2000) as f64 / 1000.0,
+            2 => 3.0 + (delay_seed % 1500) as f64 / 1000.0,
+            3 => 2.5 + (delay_seed % 1000) as f64 / 1000.0,
+            _ => 2.0 + (delay_seed % 800) as f64 / 1000.0,
         };
 
-        // Glow intensity multiplier by level
         let glow_class = match level {
             0 => "",
             1 => "twinkle-soft",
@@ -250,17 +277,20 @@ fn generate_svg(username: &str, days: &[ContributionDay]) -> String {
                 cascade_delay, twinkle_delay, twinkle_duration
             )
         } else {
-            format!(
-                r#" style="animation-delay: {:.2}s""#,
-                cascade_delay
-            )
+            format!(r#" style="animation-delay: {:.2}s""#, cascade_delay)
         };
 
-        let class_extra = if level > 0 { format!(" {glow_class}") } else { String::new() };
+        let class_extra = if level > 0 {
+            format!(" {glow_class}")
+        } else {
+            String::new()
+        };
 
         cells_html.push_str(&format!(
-            r#"<rect x="{x}" y="{y}" width="{cell_size}" height="{cell_size}" class="day level-{level}{class_extra}"{style_extra} rx="2" ry="2"><title>{} contributions on {}</title></rect>"#,
-            count, day.date,
+            r#"<rect x="{x}" y="{y}" width="{sz}" height="{sz}" class="day level-{level}{class_extra}"{style_extra} rx="2" ry="2"><title>{count} contributions on {date}</title></rect>"#,
+            sz = cfg.cell_size,
+            count = count,
+            date = day.date,
             class_extra = class_extra,
             style_extra = style_attr,
         ));
@@ -272,10 +302,9 @@ fn generate_svg(username: &str, days: &[ContributionDay]) -> String {
         }
     }
 
-    // Total contributions
     let total: u32 = days.iter().map(|d| d.contribution_count).sum();
 
-    // Generate decorative background star dots
+    // Background star dots
     let mut bg_stars_html = String::new();
     let mut star_seed: u32 = 1337;
     for i in 0..40 {
@@ -283,66 +312,77 @@ fn generate_svg(username: &str, days: &[ContributionDay]) -> String {
         let sx = (star_seed % (svg_width as u32 - 40) + 40) as i32;
         star_seed = star_seed.wrapping_mul(1664525).wrapping_add(1013904223);
         let sy = (star_seed % (svg_height as u32 - 20) + 10) as i32;
-        let sr = 0.5 + (i % 3) as f64 * 0.3; // 0.5 to 1.1 radius
+        let sr = 0.5 + (i % 3) as f64 * 0.3;
         let delay = (i as f64) * 0.3;
         let dur = 2.0 + (i % 5) as f64 * 0.8;
         bg_stars_html.push_str(&format!(
-            r#"<circle cx="{}" cy="{}" r="{:.1}" class="bg-star" style="animation-delay:{:.1}s;animation-duration:{:.1}s"/>"#,
-            sx, sy, sr, delay, dur
+            r#"<circle cx="{sx}" cy="{sy}" r="{:.1}" class="bg-star" style="animation-delay:{:.1}s;animation-duration:{:.1}s"/>"#,
+            sr, delay, dur
         ));
     }
 
     let total_text_y = svg_height - 3;
+    let lw = cfg.label_width;
     format!(
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="{svg_width}" height="{svg_height}" viewBox="0 0 {svg_width} {svg_height}">
   <style>
-    /* --- Text styles --- */
+    /* ===== TEXT STYLES ===== */
     .month-label {{
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
       font-size: 10px;
-      fill: #57606a;
+      fill: currentColor;
       opacity: 0;
       animation: fadeIn 0.6s ease forwards;
     }}
     .day-label {{
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
       font-size: 10px;
-      fill: #57606a;
+      fill: currentColor;
       opacity: 0;
       animation: fadeIn 0.6s ease forwards;
     }}
 
-    /* --- Cell base styles --- */
+    /* ===== CELL BASE ===== */
     .day {{
-      stroke: rgba(27, 31, 36, 0.06);
       stroke-width: 1;
       opacity: 0;
       animation: cellAppear 0.4s ease forwards;
     }}
-    .level-0 {{ fill: #ebedf0; }}
+
+    /* ===== THEME: LIGHT (default) ===== */
+    .day {{ stroke: rgba(27, 31, 36, 0.06); }}
+    .level-0 {{ fill: rgba(27, 31, 36, 0.05); }}
     .level-1 {{ fill: #9be9a8; }}
     .level-2 {{ fill: #40c463; }}
     .level-3 {{ fill: #30a14e; }}
     .level-4 {{ fill: #216e39; }}
 
-    /* --- Keyframes --- */
+    /* ===== THEME: DARK ===== */
+    @media (prefers-color-scheme: dark) {{
+      .day {{ stroke: rgba(255, 255, 255, 0.06); }}
+      .level-0 {{ fill: rgba(255, 255, 255, 0.07); }}
+      .level-1 {{ fill: rgba(155, 233, 168, 0.7); }}
+      .level-2 {{ fill: rgba(64, 196, 99, 0.8); }}
+      .level-3 {{ fill: rgba(48, 161, 78, 0.9); }}
+      .level-4 {{ fill: #39d353; }}
 
-    /* Fade-in for text labels */
+      .bg-star {{ fill: rgba(255,255,255,0.7); }}
+    }}
+
+    /* ===== KEYFRAMES ===== */
     @keyframes fadeIn {{
       from {{ opacity: 0; }}
       to   {{ opacity: 1; }}
     }}
 
-    /* Cells appear with scale + opacity cascade */
     @keyframes cellAppear {{
       0%   {{ opacity: 0; transform: scale(0.3); }}
       60%  {{ opacity: 1; transform: scale(1.1); }}
       100% {{ opacity: 1; transform: scale(1); }}
     }}
 
-    /* --- Twinkle animations by intensity --- */
-    /* Soft: subtle glow pulse (level 1) */
+    /* --- Twinkle: soft (level 1) --- */
     @keyframes twinkleSoft {{
       0%, 100% {{ filter: brightness(1) drop-shadow(0 0 0px transparent); }}
       50%      {{ filter: brightness(1.3) drop-shadow(0 0 3px rgba(155,233,168,0.5)); }}
@@ -351,7 +391,7 @@ fn generate_svg(username: &str, days: &[ContributionDay]) -> String {
       animation: cellAppear 0.4s ease forwards, twinkleSoft var(--twinkle-dur, 5s) ease-in-out infinite;
     }}
 
-    /* Medium: noticeable glow (level 2) */
+    /* --- Twinkle: mid (level 2) --- */
     @keyframes twinkleMid {{
       0%, 100% {{ filter: brightness(1) drop-shadow(0 0 0px transparent); }}
       40%      {{ filter: brightness(1.5) drop-shadow(0 0 5px rgba(64,196,99,0.6)); }}
@@ -361,7 +401,7 @@ fn generate_svg(username: &str, days: &[ContributionDay]) -> String {
       animation: cellAppear 0.4s ease forwards, twinkleMid var(--twinkle-dur, 4s) ease-in-out infinite;
     }}
 
-    /* Bright: strong pulse (level 3) */
+    /* --- Twinkle: bright (level 3) --- */
     @keyframes twinkleBright {{
       0%, 100% {{ filter: brightness(1) drop-shadow(0 0 0px transparent); }}
       30%      {{ filter: brightness(1.8) drop-shadow(0 0 8px rgba(48,161,78,0.7)); }}
@@ -371,44 +411,41 @@ fn generate_svg(username: &str, days: &[ContributionDay]) -> String {
       animation: cellAppear 0.4s ease forwards, twinkleBright var(--twinkle-dur, 3s) ease-in-out infinite;
     }}
 
-    /* Intense: dramatic star sparkle (level 4) */
+    /* --- Twinkle: intense (level 4) --- */
     @keyframes twinkleIntense {{
       0%   {{ filter: brightness(1)    drop-shadow(0 0 0px transparent); }}
-      25%  {{ filter: brightness(2.2)  drop-shadow(0 0 12px rgba(33,110,57,0.9)); }}
-      50%  {{ filter: brightness(1.2)  drop-shadow(0 0 3px rgba(33,110,57,0.3)); }}
-      75%  {{ filter: brightness(1.8)  drop-shadow(0 0 8px rgba(33,110,57,0.6)); }}
+      25%  {{ filter: brightness(2.2)  drop-shadow(0 0 12px rgba(57,211,83,0.9)); }}
+      50%  {{ filter: brightness(1.2)  drop-shadow(0 0 3px rgba(57,211,83,0.3)); }}
+      75%  {{ filter: brightness(1.8)  drop-shadow(0 0 8px rgba(57,211,83,0.6)); }}
       100% {{ filter: brightness(1)    drop-shadow(0 0 0px transparent); }}
     }}
     .twinkle-intense {{
       animation: cellAppear 0.4s ease forwards, twinkleIntense var(--twinkle-dur, 2.5s) ease-in-out infinite;
     }}
 
-    /* --- Background star field (subtle decorative layer) --- */
+    /* --- Background stars --- */
     @keyframes bgTwinkle {{
       0%, 100% {{ opacity: 0.15; }}
       50%      {{ opacity: 0.4; }}
     }}
     .bg-star {{
-      fill: #fff;
+      fill: rgba(0,0,0,0.25);
       opacity: 0.15;
       animation: bgTwinkle 3s ease-in-out infinite;
     }}
   </style>
   <defs>
-    <!-- Subtle radial gradient for background ambiance -->
     <radialGradient id="bgGlow" cx="50%" cy="50%" r="60%">
-      <stop offset="0%" style="stop-color:#1a2332;stop-opacity:0.15"/>
-      <stop offset="100%" style="stop-color:#1a2332;stop-opacity:0"/>
+      <stop offset="0%" style="stop-color:currentColor;stop-opacity:0.04"/>
+      <stop offset="100%" style="stop-color:currentColor;stop-opacity:0"/>
     </radialGradient>
   </defs>
-  <!-- Soft background glow -->
-  <rect width="{svg_width}" height="{svg_height}" fill="url(#bgGlow)" opacity="0.3"/>
-  <!-- Tiny decorative star dots scattered in background -->
+  <rect width="{svg_width}" height="{svg_height}" fill="url(#bgGlow)"/>
   {bg_stars_html}
   {month_labels_html}
   {day_labels_html}
   {cells_html}
-  <text x="{label_width}" y="{total_text_y}" class="day-label">{total} contributions in the last year</text>
+  <text x="{lw}" y="{total_text_y}" class="day-label">{total} contributions in the last year</text>
 </svg>"#
     )
 }

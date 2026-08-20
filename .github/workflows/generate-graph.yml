@@ -32,15 +32,15 @@ jobs:
       - name: Build activity-graph
         run: cargo build --release
 
-      - name: Generate activity graph SVG
+      - name: Generate activity graph SVGs
         run: ./target/release/activity-graph ${{ github.repository_owner }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Commit and push updated SVG
+      - name: Commit and push updated SVGs
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add activity-graph.svg
-          git diff --staged --quiet || git commit -m "chore: update activity graph [skip ci]"
+          git add activity-graph.svg activity-graph-mobile.svg
+          git diff --staged --quiet || git commit -m "chore: update activity graphs [skip ci]"
           git push
