@@ -16,16 +16,22 @@ echo "✅ Generated activity-graph.svg and activity-graph-mobile.svg"
 # Inject graph into README if markers exist
 if [ -f "README.md" ] && grep -q "<!-- BEGIN ACTIVITY-GRAPH -->" README.md; then
   echo "Injecting graph into README..."
-  sed -i "/<!-- BEGIN ACTIVITY-GRAPH -->/,/<!-- END ACTIVITY-GRAPH -->/{
-    /<!-- BEGIN ACTIVITY-GRAPH -->/!{
-      /<!-- END ACTIVITY-GRAPH -->/!d
+  # Use awk to replace content between markers
+  awk '
+    /<!-- BEGIN ACTIVITY-GRAPH -->/ {
+      print
+      print "<picture>"
+      print "  <source media=\"(max-width: 767px)\" srcset=\"activity-graph-mobile.svg\">"
+      print "  <img src=\"activity-graph.svg\" alt=\"Activity Graph\" width=\"100%\">"
+      print "</picture>"
+      skip = 1
+      next
     }
-    /<!-- BEGIN ACTIVITY-GRAPH -->/a\\
-<picture>
-  <source media=\"(max-width: 767px)\" srcset=\"activity-graph-mobile.svg\">
-  <img src=\"activity-graph.svg\" alt=\"Activity Graph\" width=\"100%\">
-</picture>
-  }" README.md
+    /<!-- END ACTIVITY-GRAPH -->/ {
+      skip = 0
+    }
+    !skip { print }
+  ' README.md > README.md.tmp && mv README.md.tmp README.md
   echo "✅ Graph injected into README"
 fi
 
