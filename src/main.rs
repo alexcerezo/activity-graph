@@ -135,10 +135,10 @@ fn main() {
 fn fetch_contributions(username: &str, token: &str) -> Vec<ContributionDay> {
     let client = Client::new();
 
-    // Calculate date range: last 365 days
+    // Calculate date range: last 365 days (GitHub API requires DateTime, not Date)
     let today = chrono::Utc::now().date_naive();
-    let from = (today - chrono::Duration::days(364)).format("%Y-%m-%d").to_string();
-    let to = today.format("%Y-%m-%d").to_string();
+    let from = format!("{}T00:00:00Z", (today - chrono::Duration::days(364)).format("%Y-%m-%d"));
+    let to = format!("{}T00:00:00Z", today.format("%Y-%m-%d"));
 
     let query = json!({
         "query": format!(
