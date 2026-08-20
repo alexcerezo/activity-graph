@@ -1,46 +1,42 @@
-name: Generate Activity Graph
+name: Activity Graph
 
 on:
   schedule:
-    # Run daily at 00:00 UTC
-    - cron: '0 0 * * *'
-  workflow_dispatch: # Allow manual trigger
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
-  generate:
+  activity-graph:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: alexcerezo/activity-graph@main
 
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: cargo-${{ hashFiles('Cargo.lock') }}
-          restore-keys: cargo-
-
-      - name: Build activity-graph
-        run: cargo build --release
-
-      - name: Generate activity graph SVGs
-        run: ./target/release/activity-graph ${{ github.repository_owner }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Commit and push updated SVGs
+      - name: Inject graph into README
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add activity-graph.svg activity-graph-mobile.svg
-          git diff --staged --quiet || git commit -m "chore: update activity graphs [skip ci]"
-          git push
+          PICTURE="<picture>
+            <source media=\"(max-width: 767px)\" srcset=\"activity-graph-mobile.svg\">
+            <img src=\"activity-graph.svg\" alt=\"Activity Graph\" width=\"100%\">
+          </picture>"
+          
+          sed -i "/<!-- BEGIN ACTIVITY-GRAPH -->/,/<!-- END ACTIVITY-GRAPH -->/{
+            /<!-- BEGIN ACTIVITY-GRAPH -->/!{
+              /<!-- END ACTIVITY-GRAPH -->/!d
+            }
+            /<!-- BEGIN ACTIVITY-GRAPH -->/a\\
+          $PICTURE
+          }" README.md
+
+      - name: Commit changes
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git add activity-graph.svg activity-graph-mobile.svg README.md
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: update activity graph [skip ci]"
+            git push
+          fi

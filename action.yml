@@ -1,0 +1,25 @@
+name: 'GitHub Activity Graph'
+description: 'Generate a beautiful animated GitHub contribution graph SVG for your README'
+author: 'alexcerezo'
+branding:
+  icon: 'activity'
+  color: 'green'
+
+inputs:
+  username:
+    description: 'GitHub username (defaults to repository owner)'
+    required: false
+    default: ''
+  token:
+    description: 'GitHub token (defaults to GITHUB_TOKEN)'
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  entrypoint: '/entrypoint.sh'
+  args:
+    - ${{ inputs.username }}
+  env:
+    GITHUB_TOKEN: ${{ inputs.token }}
