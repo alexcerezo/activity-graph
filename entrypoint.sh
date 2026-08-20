@@ -37,8 +37,8 @@ fi
 
 # Commit and push if in GitHub Actions
 if [ -n "$GITHUB_ACTIONS" ]; then
-  git config --local user.name "github-actions[bot]"
-  git config --local user.email "github-actions[bot]@users.noreply.github.com"
+  git config --global user.name "github-actions[bot]"
+  git config --global user.email "github-actions[bot]@users.noreply.github.com"
   git add activity-graph.svg activity-graph-mobile.svg README.md 2>/dev/null || true
   if ! git diff --staged --quiet; then
     git commit -m "chore: update activity graph [skip ci]"
