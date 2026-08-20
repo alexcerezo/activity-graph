@@ -131,11 +131,17 @@ fn main() {
 
 fn fetch_contributions(username: &str, token: &str) -> Vec<ContributionDay> {
     let client = Client::new();
+
+    // Calculate date range: last 365 days
+    let today = chrono::Utc::now().date_naive();
+    let from = (today - chrono::Duration::days(364)).format("%Y-%m-%d").to_string();
+    let to = today.format("%Y-%m-%d").to_string();
+
     let query = json!({
         "query": format!(
             r#"{{
               user(login: "{username}") {{
-                contributionsCollection {{
+                contributionsCollection(from: "{from}", to: "{to}") {{
                   contributionCalendar {{
                     weeks {{
                       contributionDays {{
@@ -150,13 +156,25 @@ fn fetch_contributions(username: &str, token: &str) -> Vec<ContributionDay> {
         )
     });
 
-    let resp: GraphQLResponse = client
+    eprintln!("Querying GitHub API for user: {username}");
+
+    let resp = client
         .post("https://api.github.com/graphql")
         .bearer_auth(token)
         .header("User-Agent", "activity-graph-rust")
         .json(&query)
         .send()
-        .expect("Failed to send request to GitHub API")
+        .expect("Failed to send request to GitHub API");
+
+    let status = resp.status();
+    if !status.is_success() {
+        eprintln!("GitHub API returned status: {status}");
+        let body = resp.text().unwrap_or_default();
+        eprintln!("Response body: {body}");
+        std::process::exit(1);
+    }
+
+    let resp: GraphQLResponse = resp
         .json()
         .expect("Failed to parse GitHub API response");
 
