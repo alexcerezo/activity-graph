@@ -345,29 +345,28 @@ fn generate_svg(days: &[ContributionDay], cfg: &SvgConfig) -> String {
 
     /* ===== CELL BASE ===== */
     .day {{
-      stroke-width: 1;
+      stroke: none;
       opacity: 0;
       animation: cellAppear 0.4s ease forwards;
     }}
 
     /* ===== THEME: LIGHT (default) ===== */
-    .day {{ stroke: rgba(27, 31, 36, 0.06); }}
-    .level-0 {{ fill: rgba(27, 31, 36, 0.05); }}
-    .level-1 {{ fill: #9be9a8; }}
-    .level-2 {{ fill: #40c463; }}
-    .level-3 {{ fill: #30a14e; }}
-    .level-4 {{ fill: #216e39; }}
+    /* Pure green with transparency — level 0 invisible */
+    .level-0 {{ fill: transparent; stroke: none; }}
+    .level-1 {{ fill: rgba(0, 123, 58, 0.15); }}
+    .level-2 {{ fill: rgba(0, 123, 58, 0.35); }}
+    .level-3 {{ fill: rgba(0, 123, 58, 0.60); }}
+    .level-4 {{ fill: rgba(0, 123, 58, 0.90); }}
 
     /* ===== THEME: DARK ===== */
     @media (prefers-color-scheme: dark) {{
-      .day {{ stroke: rgba(255, 255, 255, 0.06); }}
-      .level-0 {{ fill: rgba(255, 255, 255, 0.07); }}
-      .level-1 {{ fill: rgba(155, 233, 168, 0.7); }}
-      .level-2 {{ fill: rgba(64, 196, 99, 0.8); }}
-      .level-3 {{ fill: rgba(48, 161, 78, 0.9); }}
-      .level-4 {{ fill: #39d353; }}
+      .level-0 {{ fill: transparent; stroke: none; }}
+      .level-1 {{ fill: rgba(57, 211, 83, 0.25); }}
+      .level-2 {{ fill: rgba(57, 211, 83, 0.50); }}
+      .level-3 {{ fill: rgba(57, 211, 83, 0.75); }}
+      .level-4 {{ fill: rgba(57, 211, 83, 1.0); }}
 
-      .bg-star {{ fill: rgba(255,255,255,0.7); }}
+      .bg-star {{ fill: rgba(57, 211, 83, 0.6); }}
     }}
 
     /* ===== KEYFRAMES ===== */
@@ -384,8 +383,8 @@ fn generate_svg(days: &[ContributionDay], cfg: &SvgConfig) -> String {
 
     /* --- Twinkle: soft (level 1) --- */
     @keyframes twinkleSoft {{
-      0%, 100% {{ filter: brightness(1) drop-shadow(0 0 0px transparent); }}
-      50%      {{ filter: brightness(1.3) drop-shadow(0 0 3px rgba(155,233,168,0.5)); }}
+      0%, 100% {{ filter: drop-shadow(0 0 0px transparent); background: transparent; }}
+      50%      {{ filter: drop-shadow(0 0 4px rgba(0,123,58,0.4)); background: rgba(0,123,58,0.05); }}
     }}
     .twinkle-soft {{
       animation: cellAppear 0.4s ease forwards, twinkleSoft var(--twinkle-dur, 5s) ease-in-out infinite;
@@ -393,9 +392,9 @@ fn generate_svg(days: &[ContributionDay], cfg: &SvgConfig) -> String {
 
     /* --- Twinkle: mid (level 2) --- */
     @keyframes twinkleMid {{
-      0%, 100% {{ filter: brightness(1) drop-shadow(0 0 0px transparent); }}
-      40%      {{ filter: brightness(1.5) drop-shadow(0 0 5px rgba(64,196,99,0.6)); }}
-      70%      {{ filter: brightness(1.2) drop-shadow(0 0 2px rgba(64,196,99,0.3)); }}
+      0%, 100% {{ filter: drop-shadow(0 0 0px transparent); background: transparent; }}
+      40%      {{ filter: drop-shadow(0 0 6px rgba(0,123,58,0.5)); background: rgba(0,123,58,0.08); }}
+      70%      {{ filter: drop-shadow(0 0 3px rgba(0,123,58,0.3)); background: transparent; }}
     }}
     .twinkle-mid {{
       animation: cellAppear 0.4s ease forwards, twinkleMid var(--twinkle-dur, 4s) ease-in-out infinite;
@@ -403,9 +402,9 @@ fn generate_svg(days: &[ContributionDay], cfg: &SvgConfig) -> String {
 
     /* --- Twinkle: bright (level 3) --- */
     @keyframes twinkleBright {{
-      0%, 100% {{ filter: brightness(1) drop-shadow(0 0 0px transparent); }}
-      30%      {{ filter: brightness(1.8) drop-shadow(0 0 8px rgba(48,161,78,0.7)); }}
-      60%      {{ filter: brightness(1.1) drop-shadow(0 0 2px rgba(48,161,78,0.2)); }}
+      0%, 100% {{ filter: drop-shadow(0 0 0px transparent); background: transparent; }}
+      30%      {{ filter: drop-shadow(0 0 10px rgba(0,123,58,0.6)); background: rgba(0,123,58,0.12); }}
+      60%      {{ filter: drop-shadow(0 0 4px rgba(0,123,58,0.3)); background: transparent; }}
     }}
     .twinkle-bright {{
       animation: cellAppear 0.4s ease forwards, twinkleBright var(--twinkle-dur, 3s) ease-in-out infinite;
@@ -413,24 +412,49 @@ fn generate_svg(days: &[ContributionDay], cfg: &SvgConfig) -> String {
 
     /* --- Twinkle: intense (level 4) --- */
     @keyframes twinkleIntense {{
-      0%   {{ filter: brightness(1)    drop-shadow(0 0 0px transparent); }}
-      25%  {{ filter: brightness(2.2)  drop-shadow(0 0 12px rgba(57,211,83,0.9)); }}
-      50%  {{ filter: brightness(1.2)  drop-shadow(0 0 3px rgba(57,211,83,0.3)); }}
-      75%  {{ filter: brightness(1.8)  drop-shadow(0 0 8px rgba(57,211,83,0.6)); }}
-      100% {{ filter: brightness(1)    drop-shadow(0 0 0px transparent); }}
+      0%   {{ filter: drop-shadow(0 0 0px transparent); background: transparent; }}
+      25%  {{ filter: drop-shadow(0 0 14px rgba(0,123,58,0.8)); background: rgba(0,123,58,0.15); }}
+      50%  {{ filter: drop-shadow(0 0 5px rgba(0,123,58,0.4)); background: transparent; }}
+      75%  {{ filter: drop-shadow(0 0 10px rgba(0,123,58,0.6)); background: rgba(0,123,58,0.10); }}
+      100% {{ filter: drop-shadow(0 0 0px transparent); background: transparent; }}
     }}
     .twinkle-intense {{
       animation: cellAppear 0.4s ease forwards, twinkleIntense var(--twinkle-dur, 2.5s) ease-in-out infinite;
     }}
 
+    /* --- Dark mode glow overrides --- */
+    @media (prefers-color-scheme: dark) {{
+      @keyframes twinkleSoft {{
+        0%, 100% {{ filter: drop-shadow(0 0 0px transparent); }}
+        50%      {{ filter: drop-shadow(0 0 6px rgba(57,211,83,0.6)); }}
+      }}
+      @keyframes twinkleMid {{
+        0%, 100% {{ filter: drop-shadow(0 0 0px transparent); }}
+        40%      {{ filter: drop-shadow(0 0 8px rgba(57,211,83,0.7)); }}
+        70%      {{ filter: drop-shadow(0 0 4px rgba(57,211,83,0.4)); }}
+      }}
+      @keyframes twinkleBright {{
+        0%, 100% {{ filter: drop-shadow(0 0 0px transparent); }}
+        30%      {{ filter: drop-shadow(0 0 12px rgba(57,211,83,0.8)); }}
+        60%      {{ filter: drop-shadow(0 0 5px rgba(57,211,83,0.4)); }}
+      }}
+      @keyframes twinkleIntense {{
+        0%   {{ filter: drop-shadow(0 0 0px transparent); }}
+        25%  {{ filter: drop-shadow(0 0 18px rgba(57,211,83,1.0)); }}
+        50%  {{ filter: drop-shadow(0 0 6px rgba(57,211,83,0.5)); }}
+        75%  {{ filter: drop-shadow(0 0 14px rgba(57,211,83,0.8)); }}
+        100% {{ filter: drop-shadow(0 0 0px transparent); }}
+      }}
+    }}
+
     /* --- Background stars --- */
     @keyframes bgTwinkle {{
-      0%, 100% {{ opacity: 0.15; }}
-      50%      {{ opacity: 0.4; }}
+      0%, 100% {{ opacity: 0.1; }}
+      50%      {{ opacity: 0.35; }}
     }}
     .bg-star {{
-      fill: rgba(0,0,0,0.25);
-      opacity: 0.15;
+      fill: rgba(0, 123, 58, 0.3);
+      opacity: 0.1;
       animation: bgTwinkle 3s ease-in-out infinite;
     }}
   </style>
