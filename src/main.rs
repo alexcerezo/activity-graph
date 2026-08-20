@@ -19,11 +19,13 @@ struct GraphData {
 
 #[derive(Debug, Deserialize)]
 struct User {
+    #[serde(rename = "contributionsCollection")]
     contributions_collection: ContributionsCollection,
 }
 
 #[derive(Debug, Deserialize)]
 struct ContributionsCollection {
+    #[serde(rename = "contributionCalendar")]
     contribution_calendar: ContributionCalendar,
 }
 
@@ -34,6 +36,7 @@ struct ContributionCalendar {
 
 #[derive(Debug, Deserialize)]
 struct Week {
+    #[serde(rename = "contributionDays")]
     contribution_days: Vec<ContributionDay>,
 }
 
