@@ -16,8 +16,11 @@ echo "✅ Generated activity-graph.svg and activity-graph-mobile.svg"
 # Inject graph into README if markers exist
 if [ -f "README.md" ] && grep -q "<!-- BEGIN ACTIVITY-GRAPH -->" README.md; then
   echo "Injecting graph into README..."
-  # Use awk to replace content between markers
+  # Use awk to replace content between markers.
+  # Only the FIRST marker pair is replaced, so marker examples inside
+  # code fences (e.g. in this repo's own docs) are left untouched.
   awk '
+    replaced { print; next }
     /<!-- BEGIN ACTIVITY-GRAPH -->/ {
       print
       print "<picture>"
@@ -29,6 +32,7 @@ if [ -f "README.md" ] && grep -q "<!-- BEGIN ACTIVITY-GRAPH -->" README.md; then
     }
     /<!-- END ACTIVITY-GRAPH -->/ {
       skip = 0
+      replaced = 1
     }
     !skip { print }
   ' README.md > README.md.tmp && mv README.md.tmp README.md
