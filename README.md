@@ -25,10 +25,6 @@ In your profile README (or any README where you want to display the graph), add 
 
 ```markdown
 <!-- BEGIN ACTIVITY-GRAPH -->
-<picture>
-  <source media="(max-width: 767px)" srcset="activity-graph-mobile.svg">
-  <img src="activity-graph.svg" alt="Activity Graph" width="100%">
-</picture>
 <!-- END ACTIVITY-GRAPH -->
 ```
 
@@ -53,34 +49,54 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: alexcerezo/activity-graph@main
+      - uses: alexcerezo/activity-graph@v1
+```
 
-      - name: Inject graph into README
-        run: |
-          GRAPH_DESKTOP=$(cat activity-graph.svg)
-          GRAPH_MOBILE=$(cat activity-graph-mobile.svg)
-          
-          # Build the picture element
-          PICTURE="<picture>
-  <source media=\"(max-width: 767px)\" srcset=\"activity-graph-mobile.svg\">
-  <img src=\"activity-graph.svg\" alt=\"Activity Graph\" width=\"100%\">
-</picture>"
-          
-          # Replace between comment tags
-          sed -i "/<!-- BEGIN ACTIVITY-GRAPH -->/,/<!-- END ACTIVITY-GRAPH -->/{
-<picture>
-  <source media="(max-width: 767px)" srcset="activity-graph-mobile.svg">
-  <img src="activity-graph.svg" alt="Activity Graph" width="100%">
-</picture>
-            /<!-- BEGIN ACTIVITY-GRAPH -->/!{
-<picture>
-  <source media="(max-width: 767px)" srcset="activity-graph-mobile.svg">
-  <img src="activity-graph.svg" alt="Activity Graph" width="100%">
-</picture>
-              /<!-- END ACTIVITY-GRAPH -->/!d
-            }
-            /<!-- BEGIN ACTIVITY-GRAPH -->/a\\
-<picture>
-  <source media="(max-width: 767px)" srcset="activity-graph-mobile.svg">
-  <img src="activity-graph.svg" alt="Activity Graph" width="100%">
-</picture>
+That's all! The action generates the SVGs, injects them into your README between the markers, and commits the changes automatically.
+
+> [!TIP]
+> Pin to `@v1` for the latest stable release, or `@main` if you want to live on the edge.
+
+### 3. Run the Workflow
+
+Go to **Actions** tab → **Activity Graph** → **Run workflow**
+
+That's it! Your README will automatically update with your activity graph. 🎉
+
+## Configuration Options
+
+### Inputs
+
+| Input | Description | Required | Default |
+|-------|-------------|----------|---------|
+| `username` | GitHub username | ❌ No | `${{ github.repository_owner }}` |
+| `token` | GitHub token | ❌ No | `${{ github.token }}` |
+
+## How It Works
+
+1. The GitHub Action runs on a schedule (daily by default)
+2. Fetches your contribution data via GitHub GraphQL API
+3. Generates two SVG files: desktop (53 weeks) and mobile (18 weeks)
+4. If your README contains the markers, injects the graph between them
+5. Commits and pushes the updated files to your repository
+
+## Local Development
+
+```bash
+# Build the project
+cargo build --release
+
+# Run with test data (no API token needed)
+cargo run --release -- --test
+
+# Run with real GitHub data
+GITHUB_TOKEN=your_token cargo run --release -- your_username
+```
+
+## License
+
+MIT License - feel free to use and modify.
+
+## Credits
+
+Created by [Alejandro Cerezo](https://github.com/alexcerezo)
